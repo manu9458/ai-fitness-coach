@@ -20,14 +20,6 @@ It provides smart **diet plans, workout routines**, and conversational **AI chat
 - Suggests full-body, strength, or endurance-based workout routines.
 - Adjusts difficulty level according to fitness goals.
 
-### ⚡ Real-Time Interaction
-- Chat-style UI with input box at the bottom and dynamic response area on top.
-- “Typing…” animation for a realistic chat experience.
-
-### 💾 Data Upload (Optional)
-- Upload your fitness data or progress logs (CSV/Excel).
-- Analyze progress and visualize it using Plotly charts (optional module).
-
 ---
 
 ## 🧠 How It Works
