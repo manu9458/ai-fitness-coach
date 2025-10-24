@@ -83,6 +83,9 @@ with tabs[0]:
         else:
             st.markdown(f"**Coach:** {chat['content']}")
 
+    
+
+
     # ChatGPT-style input at bottom
     user_prompt = st.chat_input("Ask your coach about diet, workouts, or fitness goals...")
 
