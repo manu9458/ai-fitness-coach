@@ -108,7 +108,7 @@ with tabs[0]:
 
                 st.markdown(f"**Coach:** {response}")
 
-# ---------------- Diet Plan ----------------
+# ---------------- Diet Plan ---------------
 with tabs[1]:
     st.subheader("🥗 Personalized Diet Plan")
     if st.button("Generate Diet Plan"):
