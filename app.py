@@ -92,12 +92,65 @@ with tabs[1]:
         logger.info(f"[{request_id}] Diet plan generated | Age: {age}, Weight: {weight}, Goal: {goal}, Diet: {diet_preference}")
 
 # ---------------- Workout Plan ----------------
+# ---------------- Workout Plan ----------------
 with tabs[2]:
-    st.subheader("🏋️ Workout Plan")
-    if st.button("Generate Workout Plan"):
+    st.subheader("🏋️ Personalized Workout Plan")
+
+    # User preferences
+    experience = st.selectbox("Experience Level", ["Beginner", "Intermediate", "Advanced"])
+    workout_time = st.selectbox("Workout Duration (minutes)", [30, 45, 60, 90])
+    equipment = st.multiselect(
+        "Available Equipment",
+        ["None", "Dumbbells", "Resistance Bands", "Barbell", "Bench", "Pull-up Bar", "Machine"],
+        default=["None"]
+    )
+    workout_focus = st.multiselect(
+        "Target Areas",
+        ["Full Body", "Upper Body", "Lower Body", "Core", "Cardio", "Arms", "Legs", "Back"],
+        default=["Full Body"]
+    )
+
+    if st.button("🏋️ Generate Workout Plan"):
         request_id = str(uuid.uuid4())
-        with st.spinner("Creating your custom workout routine..."):
-            workout = generate_workout_plan(client, age, goal, target_height, time_frame)
-        st.success("✅ Workout Plan Ready!")
-        st.write(workout)
-        logger.info(f"[{request_id}] Workout plan generated | Age: {age}, Goal: {goal}")
+        with st.spinner("Designing your personalized workout routine..."):
+            context = (
+                "You are an expert AI Fitness Trainer. Create a personalized workout plan "
+                "based on user details and preferences. Include sets, reps, rest times, "
+                "and ensure safety for user's age and goal. Return cleanly formatted text."
+            )
+
+            user_input = (
+                f"User Profile:\n"
+                f"Name: {name}\nAge: {age}\nGender: {gender}\n"
+                f"Weight: {weight} kg\nHeight: {height} cm\nGoal: {goal}\n"
+                f"Experience: {experience}\nWorkout Time: {workout_time} mins\n"
+                f"Equipment: {', '.join(equipment)}\nFocus Areas: {', '.join(workout_focus)}"
+            )
+
+            prompt = f"{context}\n\n{user_input}\n\nGenerate a structured plan."
+
+            response = stream_gemini_response(client, prompt, st.session_state.chat_history, request_id=request_id)
+
+        st.success("✅ Workout Plan Generated!")
+        st.markdown("### 💪 Your Custom Workout Plan")
+        st.write(response)
+        logger.info(f"[{request_id}] Workout plan generated | Goal: {goal}, Experience: {experience}, Time: {workout_time}")
+
+    st.markdown("---")
+    st.markdown("### 🎥 Exercise Visual Guide (Optional)")
+    st.write("Here are some reference exercise videos for your selected focus areas:")
+
+    video_links = {
+        "Full Body": "https://www.youtube.com/watch?v=UItWltVZZmE",
+        "Upper Body": "https://www.youtube.com/watch?v=xv4YhX4rK-U",
+        "Lower Body": "https://www.youtube.com/watch?v=2tM1LFFxeKg",
+        "Core": "https://www.youtube.com/watch?v=1fbU_MkV7NE",
+        "Cardio": "https://www.youtube.com/watch?v=ml6cT4AZdqI",
+        "Arms": "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
+        "Legs": "https://www.youtube.com/watch?v=8QgSAFdDff0",
+        "Back": "https://www.youtube.com/watch?v=iaBVSJm78ko",
+    }
+
+    for focus in workout_focus:
+        if focus in video_links:
+            st.video(video_links[focus])
