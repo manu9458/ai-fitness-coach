@@ -17,19 +17,41 @@ st.markdown("#### Your AI-powered health companion for personalized diet and wor
 with st.sidebar:
     st.header("🧍‍♂️ Your Profile")
     
+    if "profile_saved" not in st.session_state:
+        st.session_state.profile_saved = False
+
     # Using a form to reduce spacing
     with st.form("profile_form", clear_on_submit=False):
         name = st.text_input("Name", value="Manu")
         age = st.number_input("Age", 10, 80, 25)
         gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        weight = st.number_input("Weight (kg)", 30, 200, 70)
-        height = st.number_input("Current Height (cm)", 100, 250, 175)
-        target_height = st.number_input("Target Height (cm)", 100, 250, 175)
+        weight = st.number_input("Current Weight (kg)", 30, 200, 70)
+        target_weight = st.number_input("Target Weight (kg)", 30, 200, 65)
         goal = st.selectbox("Goal 🎯", ["Lose Weight", "Gain Muscle", "Stay Fit"])
         time_frame = st.number_input("Time Frame (weeks)", 1, 52, 12)
         diet_preference = st.selectbox("Diet Preference 🍽️", ["Vegan", "Vegetarian", "Non-Veg"])
         
-        st.form_submit_button("Save Profile")
+        save_clicked = st.form_submit_button("💾 Save Profile")
+
+    if save_clicked:
+        st.session_state.profile_saved = True
+        st.session_state.name = name
+        st.session_state.age = age
+        st.session_state.gender = gender
+        st.session_state.weight = weight
+        st.session_state.target_weight = target_weight
+        st.session_state.goal = goal
+        st.session_state.time_frame = time_frame
+        st.session_state.diet_preference = diet_preference
+
+        # Close sidebar effect (re-render main)
+        st.rerun()
+
+    # ---------------- Confirmation Message ----------------
+if st.session_state.get("profile_saved", False):
+    st.success("✅ Profile saved successfully!")
+
+
 
 st.divider()
 
@@ -59,8 +81,10 @@ with tabs[0]:
             request_id = str(uuid.uuid4())
             with st.spinner("Thinking..."):
                 context = (
-                    f"User details: Name={name}, Age={age}, Weight={weight}, Goal={goal}, "
-                    f"Diet={diet_preference}, Target Height={target_height}, Time Frame={time_frame} weeks."
+                    f"User details: Name={name}, Age={age}, Gender={gender}, "
+                    f"Current Weight={weight}kg, Target Weight={target_weight}kg, "
+                    f"Goal={goal}, Diet Preference={diet_preference}, "
+                    f"Time Frame={time_frame} weeks."
                 )
                 prompt = f"{context}\nQuestion: {user_prompt}"
 
@@ -76,8 +100,8 @@ with tabs[0]:
                 # Logging
                 logger.info(
                     f"[{request_id}] User: {user_prompt[:100]}... | Response length: {len(response)} | "
-                    f"Age: {age}, Weight: {weight}, Goal: {goal}, Diet: {diet_preference}, "
-                    f"Target Height: {target_height}, Time Frame: {time_frame} weeks"
+                    f"Age: {age}, Current Weight: {weight}, Target Weight: {target_weight}, "
+                    f"Goal: {goal}, Diet: {diet_preference}, Time Frame: {time_frame} weeks"
                 )
 
 # ---------------- Diet Plan ----------------
@@ -86,12 +110,16 @@ with tabs[1]:
     if st.button("Generate Diet Plan"):
         request_id = str(uuid.uuid4())
         with st.spinner("Preparing your personalized diet plan..."):
-            plan = generate_diet_plan(client, age, weight, goal, diet_preference, target_height, time_frame)
+            plan = generate_diet_plan(
+                client, age, weight, goal, diet_preference, target_weight, time_frame
+            )
         st.success("✅ Diet Plan Generated!")
         st.write(plan)
-        logger.info(f"[{request_id}] Diet plan generated | Age: {age}, Weight: {weight}, Goal: {goal}, Diet: {diet_preference}")
+        logger.info(
+            f"[{request_id}] Diet plan generated | Age: {age}, Weight: {weight}, Target Weight: {target_weight}, "
+            f"Goal: {goal}, Diet: {diet_preference}"
+        )
 
-# ---------------- Workout Plan ----------------
 # ---------------- Workout Plan ----------------
 with tabs[2]:
     st.subheader("🏋️ Personalized Workout Plan")
@@ -122,8 +150,8 @@ with tabs[2]:
             user_input = (
                 f"User Profile:\n"
                 f"Name: {name}\nAge: {age}\nGender: {gender}\n"
-                f"Weight: {weight} kg\nHeight: {height} cm\nGoal: {goal}\n"
-                f"Experience: {experience}\nWorkout Time: {workout_time} mins\n"
+                f"Current Weight: {weight} kg\nTarget Weight: {target_weight} kg\n"
+                f"Goal: {goal}\nExperience: {experience}\nWorkout Time: {workout_time} mins\n"
                 f"Equipment: {', '.join(equipment)}\nFocus Areas: {', '.join(workout_focus)}"
             )
 
@@ -137,7 +165,7 @@ with tabs[2]:
         logger.info(f"[{request_id}] Workout plan generated | Goal: {goal}, Experience: {experience}, Time: {workout_time}")
 
     st.markdown("---")
-    st.markdown("### 🎥 Exercise Visual Guide (Optional)")
+    st.markdown("### 🎥 Exercise Visual Guide")
     st.write("Here are some reference exercise videos for your selected focus areas:")
 
     video_links = {
