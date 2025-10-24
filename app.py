@@ -9,49 +9,60 @@ import uuid  # For unique request IDs
 # ---------------- Initialize Client ----------------
 client = get_gemini_client()
 
+# ---------------- Page Config ----------------
 st.set_page_config(page_title="AI Health Coach", page_icon="🏋️‍♀️", layout="wide")
 st.title("🏋️‍♀️ Personalized Health & Fitness Coach (AI Agent)")
 st.markdown("#### Your AI-powered health companion for personalized diet and workouts.")
 
-# ---------------- Sidebar ----------------
+# ---------------- Sidebar: Profile ----------------
 with st.sidebar:
     st.header("🧍‍♂️ Your Profile")
-    
+
     if "profile_saved" not in st.session_state:
         st.session_state.profile_saved = False
 
-    # Using a form to reduce spacing
+    # Profile form
     with st.form("profile_form", clear_on_submit=False):
-        name = st.text_input("Name", value="Manu")
-        age = st.number_input("Age", 10, 80, 25)
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        weight = st.number_input("Current Weight (kg)", 30, 200, 70)
-        target_weight = st.number_input("Target Weight (kg)", 30, 200, 65)
-        goal = st.selectbox("Goal 🎯", ["Lose Weight", "Gain Muscle", "Stay Fit"])
-        time_frame = st.number_input("Time Frame (weeks)", 1, 52, 12)
-        diet_preference = st.selectbox("Diet Preference 🍽️", ["Vegan", "Vegetarian", "Non-Veg"])
-        
+        name = st.text_input("Name", value=st.session_state.get("name", ""))
+        age = st.number_input("Age", 10, 80, st.session_state.get("age", 25))
+        gender = st.selectbox(
+            "Gender",
+            ["Male", "Female", "Other"],
+            index=["Male", "Female", "Other"].index(st.session_state.get("gender", "Male"))
+        )
+        weight = st.number_input("Current Weight (kg)", 30, 200, st.session_state.get("weight", 70))
+        target_weight = st.number_input("Target Weight (kg)", 30, 200, st.session_state.get("target_weight", 65))
+        goal = st.selectbox(
+            "Goal 🎯",
+            ["Lose Weight", "Gain Muscle", "Stay Fit"],
+            index=["Lose Weight", "Gain Muscle", "Stay Fit"].index(st.session_state.get("goal", "Stay Fit"))
+        )
+        time_frame = st.number_input("Time Frame (weeks)", 1, 52, st.session_state.get("time_frame", 12))
+        diet_preference = st.selectbox(
+            "Diet Preference 🍽️",
+            ["Vegan", "Vegetarian", "Non-Veg"],
+            index=["Vegan", "Vegetarian", "Non-Veg"].index(st.session_state.get("diet_preference", "Vegan"))
+        )
+
         save_clicked = st.form_submit_button("💾 Save Profile")
 
     if save_clicked:
-        st.session_state.profile_saved = True
-        st.session_state.name = name
-        st.session_state.age = age
-        st.session_state.gender = gender
-        st.session_state.weight = weight
-        st.session_state.target_weight = target_weight
-        st.session_state.goal = goal
-        st.session_state.time_frame = time_frame
-        st.session_state.diet_preference = diet_preference
+        st.session_state.update({
+            "profile_saved": True,
+            "name": name,
+            "age": age,
+            "gender": gender,
+            "weight": weight,
+            "target_weight": target_weight,
+            "goal": goal,
+            "time_frame": time_frame,
+            "diet_preference": diet_preference
+        })
+        st.rerun()  # Re-render main area (sidebar auto-close effect)
 
-        # Close sidebar effect (re-render main)
-        st.rerun()
-
-    # ---------------- Confirmation Message ----------------
+# ---------------- Confirmation Message ----------------
 if st.session_state.get("profile_saved", False):
-    st.success("✅ Profile saved successfully!")
-
-
+    st.success("✅ Profile saved successfully! Sidebar closed.")
 
 st.divider()
 
@@ -65,60 +76,59 @@ with tabs[0]:
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
-    # Display previous chat messages above input
+    # Display previous messages
     for chat in st.session_state.chat_history:
         if chat["role"] == "user":
             st.markdown(f"**You:** {chat['content']}")
         else:
             st.markdown(f"**Coach:** {chat['content']}")
 
-    user_prompt = st.text_area("Type your message here...", height=80)
+    # ChatGPT-style input at bottom
+    user_prompt = st.chat_input("Ask your coach about diet, workouts, or fitness goals...")
 
-    if st.button("Ask Coach"):
-        if not user_prompt.strip():
-            st.warning("⚠️ Please enter a question before asking the coach.")
+    if user_prompt:
+        if not st.session_state.get("profile_saved", False):
+            st.warning("⚠️ Please complete and save your profile before chatting with your coach.")
         else:
             request_id = str(uuid.uuid4())
-            with st.spinner("Thinking..."):
+            with st.spinner("💭 Your coach is thinking..."):
                 context = (
-                    f"User details: Name={name}, Age={age}, Gender={gender}, "
-                    f"Current Weight={weight}kg, Target Weight={target_weight}kg, "
-                    f"Goal={goal}, Diet Preference={diet_preference}, "
-                    f"Time Frame={time_frame} weeks."
+                    f"You are an AI Fitness Coach. Provide responses only about health, fitness, diet, and workouts. "
+                    f"User details: Name={st.session_state.name}, Age={st.session_state.age}, Gender={st.session_state.gender}, "
+                    f"Current Weight={st.session_state.weight}kg, Target Weight={st.session_state.target_weight}kg, "
+                    f"Goal={st.session_state.goal}, Time Frame={st.session_state.time_frame} weeks, "
+                    f"Diet Preference={st.session_state.diet_preference}."
                 )
-                prompt = f"{context}\nQuestion: {user_prompt}"
 
-                response = stream_gemini_response(client, prompt, st.session_state.chat_history)
+                prompt = f"{context}\nUser Question: {user_prompt}"
+                response = stream_gemini_response(client, prompt, st.session_state.chat_history, request_id=request_id)
 
-                # Save in session
                 st.session_state.chat_history.append({"role": "user", "content": user_prompt})
                 st.session_state.chat_history.append({"role": "model", "content": response})
 
-                # Display latest response immediately
                 st.markdown(f"**Coach:** {response}")
-
-                # Logging
-                logger.info(
-                    f"[{request_id}] User: {user_prompt[:100]}... | Response length: {len(response)} | "
-                    f"Age: {age}, Current Weight: {weight}, Target Weight: {target_weight}, "
-                    f"Goal: {goal}, Diet: {diet_preference}, Time Frame: {time_frame} weeks"
-                )
 
 # ---------------- Diet Plan ----------------
 with tabs[1]:
     st.subheader("🥗 Personalized Diet Plan")
     if st.button("Generate Diet Plan"):
-        request_id = str(uuid.uuid4())
-        with st.spinner("Preparing your personalized diet plan..."):
-            plan = generate_diet_plan(
-                client, age, weight, goal, diet_preference, target_weight, time_frame
-            )
-        st.success("✅ Diet Plan Generated!")
-        st.write(plan)
-        logger.info(
-            f"[{request_id}] Diet plan generated | Age: {age}, Weight: {weight}, Target Weight: {target_weight}, "
-            f"Goal: {goal}, Diet: {diet_preference}"
-        )
+        if not st.session_state.get("profile_saved", False):
+            st.warning("⚠️ Please complete and save your profile first.")
+        else:
+            request_id = str(uuid.uuid4())
+            with st.spinner("Preparing your personalized diet plan..."):
+                plan = generate_diet_plan(
+                    client,
+                    st.session_state.age,
+                    st.session_state.weight,
+                    st.session_state.goal,
+                    st.session_state.diet_preference,
+                    st.session_state.target_weight,
+                    st.session_state.time_frame
+                )
+            st.success("✅ Diet Plan Generated!")
+            st.write(plan)
+            logger.info(f"[{request_id}] Diet plan generated | Age: {st.session_state.age}, Weight: {st.session_state.weight}, Goal: {st.session_state.goal}, Diet: {st.session_state.diet_preference}")
 
 # ---------------- Workout Plan ----------------
 with tabs[2]:
@@ -139,46 +149,48 @@ with tabs[2]:
     )
 
     if st.button("🏋️ Generate Workout Plan"):
-        request_id = str(uuid.uuid4())
-        with st.spinner("Designing your personalized workout routine..."):
-            context = (
-                "You are an expert AI Fitness Trainer. Create a personalized workout plan "
-                "based on user details and preferences. Include sets, reps, rest times, "
-                "and ensure safety for user's age and goal. Return cleanly formatted text."
-            )
+        if not st.session_state.get("profile_saved", False):
+            st.warning("⚠️ Please complete and save your profile first.")
+        else:
+            request_id = str(uuid.uuid4())
+            with st.spinner("Designing your personalized workout routine..."):
+                context = (
+                    "You are an expert AI Fitness Trainer. Create a personalized workout plan "
+                    "based on user details and preferences. Include sets, reps, rest times, "
+                    "and ensure safety for user's age and goal. Return cleanly formatted text."
+                )
 
-            user_input = (
-                f"User Profile:\n"
-                f"Name: {name}\nAge: {age}\nGender: {gender}\n"
-                f"Current Weight: {weight} kg\nTarget Weight: {target_weight} kg\n"
-                f"Goal: {goal}\nExperience: {experience}\nWorkout Time: {workout_time} mins\n"
-                f"Equipment: {', '.join(equipment)}\nFocus Areas: {', '.join(workout_focus)}"
-            )
+                user_input = (
+                    f"User Profile:\n"
+                    f"Name: {st.session_state.name}\nAge: {st.session_state.age}\nGender: {st.session_state.gender}\n"
+                    f"Weight: {st.session_state.weight} kg\nTarget Weight: {st.session_state.target_weight} kg\n"
+                    f"Goal: {st.session_state.goal}\nExperience: {experience}\nWorkout Time: {workout_time} mins\n"
+                    f"Equipment: {', '.join(equipment)}\nFocus Areas: {', '.join(workout_focus)}"
+                )
 
-            prompt = f"{context}\n\n{user_input}\n\nGenerate a structured plan."
+                prompt = f"{context}\n\n{user_input}\n\nGenerate a structured plan."
+                response = stream_gemini_response(client, prompt, st.session_state.chat_history, request_id=request_id)
 
-            response = stream_gemini_response(client, prompt, st.session_state.chat_history, request_id=request_id)
+            st.success("✅ Workout Plan Generated!")
+            st.markdown("### 💪 Your Custom Workout Plan")
+            st.write(response)
+            logger.info(f"[{request_id}] Workout plan generated | Goal: {st.session_state.goal}, Experience: {experience}, Time: {workout_time}")
 
-        st.success("✅ Workout Plan Generated!")
-        st.markdown("### 💪 Your Custom Workout Plan")
-        st.write(response)
-        logger.info(f"[{request_id}] Workout plan generated | Goal: {goal}, Experience: {experience}, Time: {workout_time}")
+            st.markdown("---")
+            st.markdown("### 🎥 Exercise Visual Guide")
+            st.write("Here are some reference exercise videos for your selected focus areas:")
 
-    st.markdown("---")
-    st.markdown("### 🎥 Exercise Visual Guide")
-    st.write("Here are some reference exercise videos for your selected focus areas:")
+            video_links = {
+                "Full Body": "https://www.youtube.com/watch?v=UItWltVZZmE",
+                "Upper Body": "https://www.youtube.com/watch?v=xv4YhX4rK-U",
+                "Lower Body": "https://www.youtube.com/watch?v=2tM1LFFxeKg",
+                "Core": "https://www.youtube.com/watch?v=1fbU_MkV7NE",
+                "Cardio": "https://www.youtube.com/watch?v=ml6cT4AZdqI",
+                "Arms": "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
+                "Legs": "https://www.youtube.com/watch?v=8QgSAFdDff0",
+                "Back": "https://www.youtube.com/watch?v=iaBVSJm78ko",
+            }
 
-    video_links = {
-        "Full Body": "https://www.youtube.com/watch?v=UItWltVZZmE",
-        "Upper Body": "https://www.youtube.com/watch?v=xv4YhX4rK-U",
-        "Lower Body": "https://www.youtube.com/watch?v=2tM1LFFxeKg",
-        "Core": "https://www.youtube.com/watch?v=1fbU_MkV7NE",
-        "Cardio": "https://www.youtube.com/watch?v=ml6cT4AZdqI",
-        "Arms": "https://www.youtube.com/watch?v=ykJmrZ5v0Oo",
-        "Legs": "https://www.youtube.com/watch?v=8QgSAFdDff0",
-        "Back": "https://www.youtube.com/watch?v=iaBVSJm78ko",
-    }
-
-    for focus in workout_focus:
-        if focus in video_links:
-            st.video(video_links[focus])
+            for focus in workout_focus:
+                if focus in video_links:
+                    st.video(video_links[focus])
