@@ -112,26 +112,53 @@ with tabs[0]:
                 st.markdown(f"**Coach:** {response}")
 
 # ---------------- Diet Plan ---------------
+# ---------------- Diet Plan ---------------
 with tabs[1]:
     st.subheader("🥗 Personalized Diet Plan")
+
     if st.button("Generate Diet Plan"):
         if not st.session_state.get("profile_saved", False):
             st.warning("⚠️ Please complete and save your profile first.")
         else:
-            request_id = str(uuid.uuid4())
-            with st.spinner("Preparing your personalized diet plan..."):
-                plan = generate_diet_plan(
-                    client,
-                    st.session_state.age,
-                    st.session_state.weight,
-                    st.session_state.goal,
-                    st.session_state.diet_preference,
-                    st.session_state.target_weight,
-                    st.session_state.time_frame
-                )
-            st.success("✅ Diet Plan Generated!")
-            st.write(plan)
-            logger.info(f"[{request_id}] Diet plan generated | Age: {st.session_state.age}, Weight: {st.session_state.weight}, Goal: {st.session_state.goal}, Diet: {st.session_state.diet_preference}")
+            # ✅ Ensure all required keys exist
+            required_keys = ["age", "weight", "goal", "diet_preference", "target_weight", "time_frame"]
+            missing = [key for key in required_keys if key not in st.session_state]
+            if missing:
+                st.error(f"⚠️ Missing required fields: {', '.join(missing)}. Please fill out your profile again.")
+            elif client is None:
+                st.error("❌ Failed to initialize AI client. Please check your API key or environment setup.")
+            else:
+                request_id = str(uuid.uuid4())
+                try:
+                    with st.spinner("Preparing your personalized diet plan..."):
+                        plan = generate_diet_plan(
+                            client,
+                            st.session_state.get("age"),
+                            st.session_state.get("weight"),
+                            st.session_state.get("goal"),
+                            st.session_state.get("diet_preference"),
+                            st.session_state.get("target_weight"),
+                            st.session_state.get("time_frame"),
+                        )
+
+                    if not plan:
+                        st.warning("⚠️ No diet plan generated. Please try again later.")
+                    else:
+                        st.success("✅ Diet Plan Generated Successfully!")
+                        st.markdown("### 🍱 Your Personalized Diet Plan")
+                        st.write(plan)
+
+                        logger.info(
+                            f"[{request_id}] Diet plan generated | "
+                            f"Age: {st.session_state.get('age')}, "
+                            f"Weight: {st.session_state.get('weight')}, "
+                            f"Goal: {st.session_state.get('goal')}, "
+                            f"Diet: {st.session_state.get('diet_preference')}"
+                        )
+
+                except Exception as e:
+                    st.error(f"❌ Error while generating diet plan: {e}")
+                    logger.error(f"[{request_id}] Diet plan generation failed: {e}")
 
 # ---------------- Workout Plan ----------------
 with tabs[2]:
