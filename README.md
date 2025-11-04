@@ -41,3 +41,8 @@ It provides smart **diet plans, workout routines**, and conversational **AI chat
    ```bash
    git clone https://github.com/your-username/ai-fitness-coach.git
    cd ai-fitness-coach
+
+2. **Live URL**
+   ```bash
+   please activate the app first after run the url, due to inactivity on the app, app can go to sleep mode
+   https://ai-fitness-coach9458.streamlit.app/ 
